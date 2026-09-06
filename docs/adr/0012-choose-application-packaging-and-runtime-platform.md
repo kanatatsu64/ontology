@@ -8,6 +8,15 @@
 
 API、migration、PostgreSQLを稼働させる具体的なmanaged platformと、環境間で昇格する配布単位を決めます。
 
+## 用語
+
+- **managed platform:** server 管理の一部を cloud provider が担う実行基盤。
+- **OCI image:** アプリケーションと実行に必要な file をまとめた標準的な配布単位。
+- **digest:** image の内容を一意に特定する固定長の値。
+- **migration runner:** DB の migration を適用するためだけに実行する処理。
+- **stateless process:** 終了後も保持すべき状態を自身の実行領域に保存しない process。
+- **SBOM:** image に含まれる software component の一覧。
+
 ## 決定
 
 - APIをGoogle Cloud Run service、migration runnerをGoogle Cloud Run Jobで実行します。

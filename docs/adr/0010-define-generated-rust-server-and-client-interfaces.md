@@ -8,6 +8,14 @@
 
 OpenAPI と実装の逸脱を compile 時に検出できる Rust 境界が必要です。
 
+## 用語
+
+- **サーバー境界:** HTTP request を受け取り、業務実装を呼び出して response を返す接点。
+- **client:** API を呼び出す側が利用する型と操作の集合。
+- **handler trait:** 各 API 操作を業務実装へ要求する Rust の interface。
+- **routing:** request の path と method を対応する handler へ振り分けること。
+- **compile 時検出:** 実行前の build で型や interface の不一致をエラーにすること。
+
 ## 決定
 
 - version と template を固定した OpenAPI Generator の `rust-axum` から model、routing、handler trait を、Rust generator から client を生成して commit します。

@@ -8,6 +8,14 @@
 
 API の粒度に加え、ID、再送、更新、重複 Link、Entity 削除時の Link、一覧取得、エラーの挙動を定めます。
 
+## 用語
+
+- **再送:** 応答を確認できなかった操作と同じ内容を、もう一度要求すること。
+- **PATCH:** Entity 全体ではなく、指定した Property だけを更新する操作。
+- **opaque cursor:** 利用者が内部を解釈せず、次の page の取得にだけ使う値。
+- **keyset pagination:** 最後に取得した位置を基準に、次の page を取得する方式。
+- **cascade:** 一つの削除に伴って、関連するデータも自動的に削除する動作。
+
 ## 決定
 
 - Entity/Link 型ごとの create、get、delete、list と、Entity の patch を `/v1/entity-types/{type}/entities` および `/v1/link-types/{type}/links` 以下に生成します。

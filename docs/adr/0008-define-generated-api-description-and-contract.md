@@ -8,6 +8,14 @@
 
 API 仕様はレビュー可能で、ブラウザーから利用でき、Rust のサーバー境界とクライアントを生成できる必要があります。nullable、必須入力、十進数、日時も欠落なく表現します。
 
+## 用語
+
+- **API 契約:** API の利用者と提供者が共有する操作、入出力、エラーの取り決め。
+- **OpenAPI:** HTTP API の操作とデータ形式を機械可読に記述する仕様。
+- **wire format:** API を通して値を送受信するときの表現形式。
+- **problem detail:** API エラーの種類と詳細を共通形式で伝える応答。
+- **Bearer security scheme:** request に認証情報を付ける方法を表す OpenAPI 上の定義。
+
 ## 決定
 
 - HTTP/JSON API を OpenAPI 3.1 の決定的な JSON 文書として生成し、直接編集しません。

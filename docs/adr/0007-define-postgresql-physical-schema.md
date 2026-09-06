@@ -8,6 +8,14 @@
 
 migration を生成するため、Entity、Property、Link、必須性、デフォルト値を PostgreSQL の具体的なオブジェクトへ写像します。
 
+## 用語
+
+- **物理 schema:** オントロジーを DB の table、column、制約として表した構造。
+- **primary key / foreign key:** 行を一意に識別する制約と、別の行への参照を保証する制約。
+- **unique 制約:** 指定した値の組が重複しないことを保証する制約。
+- **index:** 条件に合う行を効率よく見つけるための DB の構造。
+- **`ON DELETE RESTRICT`:** 参照されている行の削除を拒否する規則。
+
 ## 決定
 
 - Entity 型を UUID primary key の `entity_<type_id>` table、Property を nullable な同名 column として生成します。`text`、`number`、`datetime` は `text`、`numeric`、`timestamptz` に写像し、任意 Property の DB default を生成します。

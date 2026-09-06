@@ -8,6 +8,14 @@
 
 生成された Rust の HTTP 境界を実行する runtime と framework を選びます。
 
+## 用語
+
+- **非同期 runtime:** 待ち時間のある複数の処理を効率よく進行させる実行基盤。
+- **HTTP framework:** request の受付、routing、response の生成を支援する仕組み。
+- **handler:** 一つの API 操作を受け持つ処理。
+- **blocking 処理:** 完了まで実行 thread を占有する処理。
+- **graceful shutdown:** 受付を止め、処理中の request に猶予を与えて終了すること。
+
 ## 決定
 
 Tokio と axum を使用します。runtime は entry point で一度だけ生成し、handler は可変 global state を持ちません。timeout、同時実行数、body size、graceful shutdown の期限を必須設定とし、blocking 処理を async executor 上で直接実行しません。
