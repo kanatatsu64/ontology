@@ -10,7 +10,7 @@ migration を生成するため、Entity、Property、Link、必須性、デフ�
 
 ## 決定
 
-- Entity 型を UUID primary key の `entity_<type_id>` table、Property を nullable な同名 column として生成します。`text`、`number`、`date` は `text`、`numeric`、`date` に写像し、任意 Property の DB default を生成します。
+- Entity 型を UUID primary key の `entity_<type_id>` table、Property を nullable な同名 column として生成します。`text`、`number`、`datetime` は `text`、`numeric`、`timestamptz` に写像し、任意 Property の DB default を生成します。
 - Link 型を UUID primary key、non-null の `from_id`/`to_id`、両端の foreign key、`UNIQUE (from_id, to_id)` を持つ `link_<type_id>` table として生成します。
 - foreign key は両端とも `ON DELETE RESTRICT` とし、from 側は unique index、to 側は追加 index で検索します。
 - SQL 識別子は小文字 ASCII の prefix 付き ID とし、PostgreSQL の長さ上限を超える場合は安定 hash で短縮します。
@@ -40,7 +40,7 @@ CREATE TABLE entity_expense (
     id uuid PRIMARY KEY,
     amount numeric NULL,
     memo text NULL DEFAULT NULL,
-    spent_on date NULL DEFAULT DATE '1970-01-01'
+    spent_at timestamptz NULL DEFAULT TIMESTAMPTZ '1970-01-01T00:00:00Z'
 );
 ```
 
@@ -55,12 +55,12 @@ CREATE TABLE entity_expense (
 #### 選択肢
 
 - **PostgreSQL の対応型:** DB 機能を活用できるが、PostgreSQL に依存する。
-- **すべて text:** 共通化できるが、型検査と数値・日付演算を失う。
+- **すべて text:** 共通化できるが、型検査と数値・日時演算を失う。
 - **JSONB 一列:** presence を保持できるが、列単位の制約と index が複雑になる。
 
 #### 採用
 
-**PostgreSQL の対応型**を選び、`text`、`number`、`date` を `text`、`numeric`、`date` へ写像します。全 Property 列を nullable とし、任意 Property の default を `DEFAULT` に生成します。必須 Property の presence は API で検証します。
+**PostgreSQL の対応型**を選び、`text`、`number`、`datetime` を `text`、`numeric`、`timestamptz` へ写像します。全 Property 列を nullable とし、任意 Property の default を `DEFAULT` に生成します。必須 Property の presence は API で検証します。
 
 ### D-3: Link の格納方式
 

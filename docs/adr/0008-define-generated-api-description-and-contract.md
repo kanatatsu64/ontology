@@ -6,14 +6,14 @@
 
 ## コンテキスト
 
-API 仕様はレビュー可能で、ブラウザーから利用でき、Rust のサーバー境界とクライアントを生成できる必要があります。nullable、必須入力、十進数、日付も欠落なく表現します。
+API 仕様はレビュー可能で、ブラウザーから利用でき、Rust のサーバー境界とクライアントを生成できる必要があります。nullable、必須入力、十進数、日時も欠落なく表現します。
 
 ## 決定
 
 - HTTP/JSON API を OpenAPI 3.1 の決定的な JSON 文書として生成し、直接編集しません。
-- `text` は nullable string、`number` は nullable な decimal string、`date` は nullable な `format: date` として生成します。必須 Property は create schema の `required`、任意 Property は `default` で表します。
+- `text` は nullable string、`number` は nullable な decimal string、`datetime` は nullable な `format: date-time` として生成します。必須 Property は create schema の `required`、任意 Property は `default` で表します。
 - `/v1`、`application/json`、UUID、安定した `operationId`、共通 problem detail、HTTP status、Bearer security scheme を仕様へ生成します。
-- validator と nullable/default/decimal/date/required の fixture で、OpenAPI と生成 code を検査します。
+- validator と nullable/default/decimal/datetime/required の fixture で、OpenAPI と生成 code を検査します。
 
 ## 検討
 
@@ -59,7 +59,7 @@ API 仕様はレビュー可能で、ブラウザーから利用でき、Rust �
 
 - nullability と required を別々に表現できること
 - 金額の十進精度を client 言語に依存せず維持できること
-- 標準的な日付表現を使えること
+- offset を含む標準的な日時表現を使えること
 
 #### 選択肢
 
@@ -72,7 +72,7 @@ API 仕様はレビュー可能で、ブラウザーから利用でき、Rust �
 
 - `text`: `{"type":["string","null"]}`
 - `number`: `{"type":["string","null"],"format":"decimal"}`
-- `date`: `{"type":["string","null"],"format":"date"}`
+- `datetime`: `{"type":["string","null"],"format":"date-time"}`。offset 必須、小数秒最大 6 桁の制約も生成する
 - 必須 Property: create request の `required` へ追加
 - 任意 Property: `default` を設定し、`required` へ追加しない
 
@@ -107,7 +107,7 @@ API 仕様はレビュー可能で、ブラウザーから利用でき、Rust �
 
 #### 採用
 
-**fixture と validator で制限する**案を選びます。nullable、default、decimal、date、required の fixture を用意し、標準 validator と生成コードの compile で検査します。
+**fixture と validator で制限する**案を選びます。nullable、default、decimal、datetime、required の fixture を用意し、標準 validator と生成コードの compile で検査します。
 
 ## 影響
 

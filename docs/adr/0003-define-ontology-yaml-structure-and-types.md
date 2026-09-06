@@ -13,7 +13,7 @@ YAML から DB と API を一意に生成するため、構文、識別子、型
 - YAML のトップレベルを `version: 1`、`entities`、`links` の mapping とします。
 - Entity 型、Property、Link 型の ID は `^[a-z][a-z0-9_]*$` とし、各定義に空でない `description` を必須とします。Property ID は Entity 型内で一意とします。
 - Entity 実データは `id`、`type`、Property を、Link 実データは `id`、`type`、from/to Entity ID を持ちます。Property は Entity だけが持ちます。
-- Property 型を nullable な `text`、任意精度十進数の `number`、`YYYY-MM-DD` の `date` に限定します。
+- Property 型を nullable な `text`、任意精度十進数の `number`、RFC 3339 の時点を表す `datetime` に限定します。
 - `required` は作成時の指定有無を表します。任意 Property には同じ型または `null` の `default` を必須とし、必須 Property に `default` を許可しません。
 - Link は有向とし、Link 型ごとに from/to Entity 型を固定します。双方向関係は逆向きの二つの Link 型で表します。
 - 未知 field、重複 key、未定義 Entity 型への Link、型と不一致な default、anchor、alias、暗黙の型変換を拒否します。
@@ -52,11 +52,11 @@ entities:
         type: text
         required: false
         default: null
-      spent_on:
-        description: 支出日
-        type: date
+      spent_at:
+        description: 支出日時
+        type: datetime
         required: false
-        default: "1970-01-01"
+        default: "1970-01-01T00:00:00Z"
   merchant:
     description: 支払先
     properties:
@@ -110,19 +110,19 @@ links:
 
 #### 判断基準
 
-- 初期ユースケースの支出、金額、日付、説明を表現できること
+- 初期ユースケースの支出、金額、日時、説明を表現できること
 - DB、OpenAPI、Rust へ精度を失わず写像できること
 - 初期 generator の実装範囲を抑えること
 
 #### 選択肢
 
-- **`text`、`number`、`date`:** 初期用途を満たすが、真偽値や時刻は直接表現できない。
+- **`text`、`number`、`datetime`:** 初期用途を満たすが、真偽値は直接表現できない。
 - **汎用 JSON Schema 型:** 表現力は高いが、全 generator の対応範囲が広がる。
 - **すべて text:** 実装は容易だが、検証と DB の型を活用できない。
 
 #### 採用
 
-**`text`、`number`、`date`**を選び、すべて値として `null` を許します。`text` は Unicode 文字列、`number` は有限の任意精度十進数、`date` は `YYYY-MM-DD` の暦日とします。
+**`text`、`number`、`datetime`**を選び、すべて値として `null` を許します。`text` は Unicode 文字列、`number` は有限の任意精度十進数、`datetime` は offset を必須とする RFC 3339 の時点とします。小数秒は最大 6 桁とし、受信時に UTC へ正規化します。
 
 ### D-5: Property の必須性とデフォルト値
 

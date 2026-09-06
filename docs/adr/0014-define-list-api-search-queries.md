@@ -14,9 +14,11 @@ Entity と Link の list API で、ID、Link の端点、Entity の Property を
 - filter は `and`、`or`、または一つの述語を持つ式です。`and` と `or` は一つ以上の式を配列で受け取り、相互にネストできます。一つの object に複数の演算子を指定することはできません。
 - Entity は `id` の `in` 述語と、Property 述語を使用できます。Property 述語は endpoint の Entity 型に定義された Property だけを対象とし、使用可能な演算子と値の形式を Property 型から生成します。
 - Link は `id`、`from`、`to` の `in` 述語を使用できます。それぞれ一つ以上の UUID を受け取り、同じ述語内の値は OR として評価します。`from` と `to` は Link 型に定義された向きを維持します。
-- `text` は `eq`、`ne`、`in`、`contains`、`starts_with`、`ends_with`、`number` と `date` は `eq`、`ne`、`in`、`lt`、`lte`、`gt`、`gte` を使用できます。すべての Property 型で `is_null` と `is_not_null` を使用できます。
+- `text` は `eq`、`ne`、`in`、`contains`、`starts_with`、`ends_with`、`number` と `datetime` は `eq`、`ne`、`in`、`lt`、`lte`、`gt`、`gte` を使用できます。すべての Property 型で `is_null` と `is_not_null` を使用できます。
+- `number` と `datetime` の比較 operand は scalar または範囲値とします。`in` は集合所属のままとし、配列の各要素に scalar または範囲値を指定できます。範囲値は端点ごとに `open` または `closed` を明示します。
+- `datetime` の範囲値には明示的な両端のほか、IANA time zone と `month` または `day` を指定する calendar 範囲を用意します。calendar 範囲は現地時刻の期間開始を含み、次の期間開始を含まない半開区間とします。
 - filter は cursor の検索条件に含め、同じ cursor と異なる filter の組み合わせを `422` にします。不正な構造、未知の Property、型に合わない値、許可されない演算子、制限超過も `422` とします。
-- ネストは root を含めて 8 階層、述語は合計 100 個、各 `in` の値は 100 個までとします。空の `and`、`or`、`in` は許可しません。
+- ネストは root を含めて 8 階層、述語は合計 100 個、各 `in` の要素は 100 個までとします。空の `and`、`or`、`in` は許可しません。
 
 ## 検討
 
@@ -101,7 +103,7 @@ Entity と Link の list API で、ID、Link の端点、Entity の Property を
 
 - **型別の述語 schema:** 生成 schema は増えるが、利用可能な演算子と値を静的に示せる。
 - **全型共通の演算子:** schema は単純だが、無効な比較を runtime でしか拒否できない。
-- **文字列へ変換して比較:** 実装は共通化できるが、数値と日付の順序を正しく扱えない。
+- **文字列へ変換して比較:** 実装は共通化できるが、数値と日時の順序を正しく扱えない。
 
 #### 採用
 
@@ -111,7 +113,8 @@ Entity と Link の list API で、ID、Link の端点、Entity の Property を
 {"id": {"in": ["<entity-uuid-1>", "<entity-uuid-2>"]}}
 {"property": "memo", "contains": "交通費"}
 {"property": "amount", "gte": "1000.00"}
-{"property": "spent_on", "lt": "2026-10-01"}
+{"property": "spent_at", "lt": "2026-10-01T00:00:00Z"}
+{"property": "spent_at", "eq": {"range": {"unit": "month", "value": "2026-07", "time_zone": "Asia/Tokyo"}}}
 {"property": "memo", "is_null": true}
 ```
 
@@ -121,13 +124,39 @@ Entity と Link の list API で、ID、Link の端点、Entity の Property を
 | --- | --- | --- |
 | `text` | `eq`, `ne`, `contains`, `starts_with`, `ends_with` | `null` ではない string 一つ |
 | `text` | `in` | `null` を含まない string の非空配列 |
-| `number` | `eq`, `ne`, `lt`, `lte`, `gt`, `gte` | decimal string 一つ |
-| `number` | `in` | decimal string の非空配列 |
-| `date` | `eq`, `ne`, `lt`, `lte`, `gt`, `gte` | `format: date` の string 一つ |
-| `date` | `in` | `format: date` の string の非空配列 |
+| `number` | `eq`, `ne`, `lt`, `lte`, `gt`, `gte` | decimal string または number 範囲値 |
+| `number` | `in` | decimal string または number 範囲値の非空配列 |
+| `datetime` | `eq`, `ne`, `lt`, `lte`, `gt`, `gte` | RFC 3339 string または datetime 範囲値 |
+| `datetime` | `in` | RFC 3339 string または datetime 範囲値の非空配列 |
 | すべて | `is_null`, `is_not_null` | `true` |
 
-`text` の一致と部分一致は Unicode code point に対する case-sensitive な比較とします。`number` は数値として、`date` は暦日の順序で比較します。null は `is_null` と `is_not_null` だけで照合し、他の演算子の operand には許可しません。一つの Property 述語には演算子を一つだけ指定します。
+`text` の一致と部分一致は Unicode code point に対する case-sensitive な比較とします。`number` は数値として、`datetime` は UTC の時点として比較します。null は `is_null` と `is_not_null` だけで照合し、他の演算子の operand には許可しません。一つの Property 述語には演算子を一つだけ指定します。
+
+number の範囲値は両端を decimal string、datetime の明示的な範囲値は両端を RFC 3339 string で指定します。`lower` は `upper` 以下とし、等しい場合は両端が `closed` のときだけ許可します。
+
+```json
+{"range": {"lower": "1000.00", "lower_bound": "closed", "upper": "2000.00", "upper_bound": "open"}}
+{"range": {"lower": "2026-07-01T00:00:00+09:00", "lower_bound": "closed", "upper": "2026-08-01T00:00:00+09:00", "upper_bound": "open"}}
+```
+
+datetime の calendar 範囲は次の形式とします。`month` の値は `YYYY-MM`、`day` の値は `YYYY-MM-DD` とし、`time_zone` は IANA time zone database の名前を必須とします。夏時間によって一日の長さが変わる場合も、固定時間ではなく現地時刻で次の期間開始を求めます。
+
+```json
+{"range": {"unit": "month", "value": "2026-07", "time_zone": "Asia/Tokyo"}}
+{"range": {"unit": "day", "value": "2026-07-15", "time_zone": "Asia/Tokyo"}}
+```
+
+範囲 `R` の下端を `a`、上端を `b` としたとき、各演算子を次のように評価します。scalar は両端が同じ `closed` の範囲として扱うため、従来の scalar 比較と一致します。
+
+- `eq R`: 値が `R` に含まれる。
+- `ne R`: 値が `R` に含まれない。
+- `lt R`: 値が下端より前にある。下端が `closed` なら `x < a`、`open` なら `x <= a`。
+- `lte R`: 値が上端より後にない。上端が `closed` なら `x <= b`、`open` なら `x < b`。
+- `gt R`: 値が上端より後にある。上端が `closed` なら `x > b`、`open` なら `x >= b`。
+- `gte R`: 値が下端より前にない。下端が `closed` なら `x >= a`、`open` なら `x > a`。
+- `in [R1, R2]`: 各要素への `eq` を OR で評価する。
+
+calendar 範囲は常に下端が `closed`、上端が `open` です。たとえば `eq 2026-07` は 7 月内、`lt 2026-07` は 7 月より前、`lte 2026-07` は 7 月末まで、`gt 2026-07` は 8 月以降、`gte 2026-07` は 7 月以降を意味します。
 
 ### D-5: pagination と入力制限
 

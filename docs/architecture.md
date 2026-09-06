@@ -17,7 +17,7 @@
 ## 概念モデル
 
 - **Entity**: 不変の ID と型を持つ、支出、取引先、口座、カテゴリなどの対象。
-- **Property**: Entity だけが持つ属性。`text`、`number`、`date` の型と必須性を持つ。
+- **Property**: Entity だけが持つ属性。`text`、`number`、`datetime` の型と必須性を持つ。
 - **Link**: 不変の ID と型を持ち、from Entity から to Entity を結ぶ有向辺。
 
 オントロジーの定義（スキーマ）と、その定義に従う実データ（インスタンス）は区別します。具体的な表現は ADR で定めます。
