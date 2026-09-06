@@ -12,9 +12,12 @@
 
 詳細は[アーキテクチャ概要](docs/architecture.md)を参照してください。実装言語、フレームワーク、データストアなどの技術選定は [ADR](docs/adr/README.md) で決定し、ADR を追加する際にこの README も拡充します。
 
+オントロジーは YAML を唯一の正とし、Rust 製コンパイラーから PostgreSQL migration、OpenAPI 3.1 仕様、Rust API インターフェースを生成します。生成物は GitHub Actions または同じ CLI の手動実行で更新し、YAML とともにコミットします。
+
 ## ドキュメント
 
 | ドキュメント | 内容 |
 | --- | --- |
 | [アーキテクチャ概要](docs/architecture.md) | システム境界、概念モデル、設計上の論点 |
+| [ユビキタス言語](docs/ubiquitous/platform.md) | オントロジープラットフォームを利用する際の共通語彙 |
 | [ADR](docs/adr/README.md) | アーキテクチャ上の意思決定と運用方法 |
