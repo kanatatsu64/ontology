@@ -15,13 +15,14 @@
 | compiler | オントロジー定義を検証し、別の利用可能な表現へ変換する tool。 |
 | CLI | command line から compiler の操作を実行する入口。 |
 | IR | 検証済みのオントロジーを各 generator が共通利用する内部表現。 |
-| generator | IR から特定の成果物を作る処理。 |
+| generator | IR や OpenAPI などの定義から特定の成果物を作る処理。 |
 | byte 単位の再現性 | 同じ入力から内容が完全に同一の file を生成できる性質。 |
 
 ## 決定
 
 - compiler と CLI を Rust で実装します。
-- parser、validator、正規化済み IR、diff、各 generator、CLI を分離し、全 generator は同じ IR を直接入力にします。
+- parser、validator、正規化済み IR、diff、各 generator、CLI を分離します。snapshot と OpenAPI は同じ IR から、SQL migration は旧 snapshot と現在の IR の意味的な差分から生成します。
+- Rust server/client は ADR 0010 に従い、生成した OpenAPI を入力に生成します。CLI が各段階を順に実行し、generator 同士は直接呼び出しません。
 - CLI は `validate`、`generate`、`check` を提供し、診断位置、出力順、format、改行を固定して byte 単位の再現性を保証します。
 - IR は公開契約にせず、保存する snapshot 形式だけを version 管理します。
 
@@ -57,11 +58,13 @@
 
 - **共通の正規化済み IR:** 構築工程は増えるが、意味を一元化できる。
 - **各 generator が YAML を読む:** 単純だが、解釈が分岐し得る。
-- **generator を直列接続:** 中間成果物に依存し、変更が伝播する。
+- **SQL から API を生成:** DB の物理表現に依存し、作成時の必須性などの意味が失われる。
 
 #### 採用
 
-**共通の正規化済み IR**を選びます。parser、validator、IR、diff、generator、CLI を crate 上で分離し、generator 間の呼び出しを禁止します。
+**共通の正規化済み IR**を選びます。snapshot と OpenAPI は IR を直接入力とし、SQL migration は ADR 0005 の意味的な差分を入力とします。SQL と API の解釈を揃え、各段階を独立して test できる構造にします。
+
+Rust server/client は公開 API 契約を共有するため `IR → OpenAPI → Rust` の順で生成します。parser、validator、IR、diff、generator、CLI を crate 上で分離し、段階間の受け渡しは CLI が担います。generator 間の直接呼び出しは禁止します。
 
 ### D-3: CLI と再現性
 

@@ -21,9 +21,9 @@ YAML から DB と API を一意に生成するため、構文、識別子、型
 ## 決定
 
 - YAML のトップレベルを `version: 1`、`entities`、`links` の mapping とします。
-- Entity 型、Property、Link 型の ID は `^[a-z][a-z0-9_]*$` とし、各定義に空でない `description` を必須とします。Property ID は Entity 型内で一意とします。
+- Entity 型、Property、Link 型の ID は `^[a-z][a-z0-9_]*$` とし、各定義に空でない `description` を必須とします。Property ID は Entity 型内で一意とし、Entity の識別情報に使う `id` と `type` を予約名として拒否します。
 - Entity 実データは `id`、`type`、Property を、Link 実データは `id`、`type`、from/to Entity ID を持ちます。Property は Entity だけが持ちます。
-- Property 型を nullable な `text`、任意精度十進数の `number`、RFC 3339 の時点を表す `datetime` に限定します。
+- Property 型を nullable な `text`、任意精度十進数の `number`、RFC 3339 の時点を表す `datetime` に限定します。`text` は default、実データ、検索の比較値を通じて Unicode code point の列を保持し、Unicode 正規化を行いません。
 - `required` は作成時の指定有無を表します。任意 Property には同じ型または `null` の `default` を必須とし、必須 Property に `default` を許可しません。
 - Link は有向とし、Link 型ごとに from/to Entity 型を固定します。双方向関係は逆向きの二つの Link 型で表します。
 - 未知 field、重複 key、未定義 Entity 型への Link、型と不一致な default、anchor、alias、暗黙の型変換を拒否します。
@@ -98,6 +98,8 @@ links:
 #### 採用
 
 **制約付き ID と必須 description**を選びます。Entity 型、Property、Link 型の ID は `^[a-z][a-z0-9_]*$` とし、Entity 型、Property、Link 型の定義には空でない `description` を必須とします。Property ID は Entity 型内で一意とします。
+
+Property ID の `id` と `type` は検証時に拒否します。Entity の識別情報との衝突を防ぎ、同名 column と API field への安定した写像を維持します。この予約は Entity 型と Link 型の ID には適用しません。
 
 ### D-3: Entity と Link の実データ
 

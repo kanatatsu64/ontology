@@ -20,7 +20,7 @@ migration を生成するため、Entity、Property、Link、必須性、デフ�
 
 ## 決定
 
-- Entity 型を UUID primary key の `entity_<type_id>` table、Property を nullable な同名 column として生成します。`text`、`number`、`datetime` は `text`、`numeric`、`timestamptz` に写像し、任意 Property の DB default を生成します。
+- Entity 型を UUID primary key の `entity_<type_id>` table、Property を nullable な同名 column として生成します。Property ID の `id` と `type` は ADR 0003 に従って生成前に拒否します。`text`、`number`、`datetime` は `text`、`numeric`、`timestamptz` に写像し、任意 Property の DB default を生成します。
 - Link 型を UUID primary key、non-null の `from_id`/`to_id`、両端の foreign key、`UNIQUE (from_id, to_id)` を持つ `link_<type_id>` table として生成します。
 - foreign key は両端とも `ON DELETE RESTRICT` とし、from 側は unique index、to 側は追加 index で検索します。
 - SQL 識別子は小文字 ASCII の prefix 付き ID とし、PostgreSQL の長さ上限を超える場合は安定 hash で短縮します。

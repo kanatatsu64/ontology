@@ -26,7 +26,7 @@ migration の差分比較元を環境に依存せず再現するには、検証�
 - `entities`、各 Entity 型の `properties`、`links` は配列とし、ID の UTF-8 byte 順に昇順で並べます。各要素は ID を明示的な field として持ちます。
 - Entity 型は `id`、`description`、`properties`、Property は `id`、`description`、`type`、`required`、任意 Property のみ `default`、Link 型は `id`、`description`、`from`、`to` をこの順で持ちます。未知 field と重複 ID を拒否します。
 - `type` は `text`、`number`、`datetime` のいずれかです。default は `text` を JSON string、`number` を正規化した decimal string、`datetime` を UTC の RFC 3339 string、null を JSON null として保存します。
-- UTF-8、2 space indent、LF、末尾改行一つを使用します。JSON string は JSON が要求する文字だけを escape し、Unicode は NFC に正規化します。空の配列も省略しません。
+- UTF-8、2 space indent、LF、末尾改行一つを使用します。JSON string は JSON が要求する文字だけを escape します。`description` は NFC に正規化し、`text` の default は Unicode 正規化せず code point の列を保持します。空の配列も省略しません。
 - snapshot に時刻、tool version、source path など生成ごとに変わる metadata を含めません。digest は snapshot 自身に含めず、canonical JSON の全 byte から SHA-256 を計算し、小文字 hexadecimal で表します。
 - 未対応の `snapshot_version` は読み込まず、明示的な変換を要求します。同じ version の schema を意味変更しません。
 
@@ -71,10 +71,13 @@ scalar は次のように正規化します。
 | scalar | 正規化規則 |
 | --- | --- |
 | ID | 検証済みの小文字 ASCII をそのまま保存する。 |
-| `description`, `text` | Unicode を NFC に正規化し、code point の内容を保存する。 |
+| `description` | Unicode を NFC に正規化する。 |
+| `text` | Unicode 正規化を行わず、code point の列をそのまま保存する。 |
 | `number` | `+` と指数表記を使わず、整数部の不要な先頭 `0` と小数部の末尾 `0` を除く。`-0` は `0` とする。 |
 | `datetime` | UTC の `Z` 表記へ変換し、小数秒の末尾 `0` を除く。小数部が空なら小数点も除く。 |
 | null | JSON null として保存する。 |
+
+`text` は ADR 0014 の code point 比較と意味を揃えます。例えば `"\u00e9"` と `"e\u0301"` は異なる default として保存し、変更時は異なる digest と migration 差分を生じさせます。この組を snapshot の round-trip と差分検出の fixture に含めます。
 
 ## 検討
 
