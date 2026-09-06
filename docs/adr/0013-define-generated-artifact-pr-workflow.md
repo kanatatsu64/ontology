@@ -10,11 +10,13 @@ YAML の変更に伴う生成物を PR に含めつつ、自動処理が利用�
 
 ## 用語
 
-- **変更元 branch:** PR の変更が置かれ、生成物の commit 先となる branch。
-- **fork PR:** 元 repository とは別の repository から送られる PR。
-- **concurrency 制御:** 同じ branch の古い処理と新しい処理が同時に反映されないようにする仕組み。
-- **rebase:** 変更の土台を最新の base branch へ載せ替える操作。
-- **workflow dispatch:** GitHub Actions の workflow を利用者が明示的に開始する方法。
+| 用語 | 定義 |
+| --- | --- |
+| 変更元 branch | PR の変更が置かれ、生成物の commit 先となる branch。 |
+| fork PR | 元 repository とは別の repository から送られる PR。 |
+| concurrency 制御 | 同じ branch の古い処理と新しい処理が同時に反映されないようにする仕組み。 |
+| rebase | 変更の土台を最新の base branch へ載せ替える操作。 |
+| workflow dispatch | GitHub Actions の workflow を利用者が明示的に開始する方法。 |
 
 ## 決定
 

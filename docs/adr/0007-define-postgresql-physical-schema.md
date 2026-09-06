@@ -10,11 +10,13 @@ migration を生成するため、Entity、Property、Link、必須性、デフ�
 
 ## 用語
 
-- **物理 schema:** オントロジーを DB の table、column、制約として表した構造。
-- **primary key / foreign key:** 行を一意に識別する制約と、別の行への参照を保証する制約。
-- **unique 制約:** 指定した値の組が重複しないことを保証する制約。
-- **index:** 条件に合う行を効率よく見つけるための DB の構造。
-- **`ON DELETE RESTRICT`:** 参照されている行の削除を拒否する規則。
+| 用語 | 定義 |
+| --- | --- |
+| 物理 schema | オントロジーを DB の table、column、制約として表した構造。 |
+| primary key / foreign key | 行を一意に識別する制約と、別の行への参照を保証する制約。 |
+| unique 制約 | 指定した値の組が重複しないことを保証する制約。 |
+| index | 条件に合う行を効率よく見つけるための DB の構造。 |
+| `ON DELETE RESTRICT` | 参照されている行の削除を拒否する規則。 |
 
 ## 決定
 

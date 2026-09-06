@@ -10,12 +10,14 @@ Entity と Link の list API で、ID、Link の端点、Entity の Property を
 
 ## 用語
 
-- **filter / 検索式:** list の結果に含める Entity または Link を定める条件。
-- **述語:** 検索対象、演算子、比較値から成る検索式の最小単位。
-- **operand / 比較値:** 述語で検索対象と比較する scalar、範囲値、またはその集合。
-- **scalar / 単一値:** 範囲を持たない一つの `text`、`number`、`datetime` 値。
-- **範囲値:** 下端、上端、および各端点を含むかどうかを持つ連続した値。
-- **calendar 範囲:** 特定の time zone における月または日を表す `datetime` の範囲値。
+| 用語 | 定義 |
+| --- | --- |
+| filter / 検索式 | list の結果に含める Entity または Link を定める条件。 |
+| 述語 | 検索対象、演算子、比較値から成る検索式の最小単位。 |
+| operand / 比較値 | 述語で検索対象と比較する scalar、範囲値、またはその集合。 |
+| scalar / 単一値 | 範囲を持たない一つの `text`、`number`、`datetime` 値。 |
+| 範囲値 | 下端、上端、および各端点を含むかどうかを持つ連続した値。 |
+| calendar 範囲 | 特定の time zone における月または日を表す `datetime` の範囲値。 |
 
 ## 決定
 

@@ -10,11 +10,13 @@
 
 ## 用語
 
-- **非同期 runtime:** 待ち時間のある複数の処理を効率よく進行させる実行基盤。
-- **HTTP framework:** request の受付、routing、response の生成を支援する仕組み。
-- **handler:** 一つの API 操作を受け持つ処理。
-- **blocking 処理:** 完了まで実行 thread を占有する処理。
-- **graceful shutdown:** 受付を止め、処理中の request に猶予を与えて終了すること。
+| 用語 | 定義 |
+| --- | --- |
+| 非同期 runtime | 待ち時間のある複数の処理を効率よく進行させる実行基盤。 |
+| HTTP framework | request の受付、routing、response の生成を支援する仕組み。 |
+| handler | 一つの API 操作を受け持つ処理。 |
+| blocking 処理 | 完了まで実行 thread を占有する処理。 |
+| graceful shutdown | 受付を止め、処理中の request に猶予を与えて終了すること。 |
 
 ## 決定
 
