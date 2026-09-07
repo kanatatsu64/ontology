@@ -21,3 +21,4 @@
 | [アーキテクチャ概要](docs/architecture.md) | システム境界、概念モデル、設計上の論点 |
 | [ユビキタス言語](docs/ubiquitous/platform.md) | オントロジープラットフォームを利用する際の共通語彙 |
 | [ADR](docs/adr/README.md) | アーキテクチャ上の意思決定と運用方法 |
+| [コーディング規約](docs/rules/README.md) | 実装、テスト、ドキュメントで守る規約 |
