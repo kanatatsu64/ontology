@@ -1,10 +1,10 @@
 mod config;
 
-use std::{error::Error, fmt, io, net::SocketAddr};
+use std::{error::Error, fmt, io, net::SocketAddr, sync::Arc};
 
 use axum::Router;
 use config::{Config, ConfigError};
-use tokio::{net::TcpListener, signal, sync::oneshot, time};
+use tokio::{net::TcpListener, signal, sync::Notify, time};
 use tower::{ServiceBuilder, limit::ConcurrencyLimitLayer};
 use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer};
 use tracing::{error, info};
@@ -28,9 +28,10 @@ async fn run() -> Result<(), ApplicationError> {
     let app = empty_router(&config);
 
     info!(%address, "API server listening");
-    let (shutdown_sender, shutdown_receiver) = oneshot::channel();
+    let shutdown = Arc::new(Notify::new());
+    let server_shutdown = Arc::clone(&shutdown);
     let server = axum::serve(listener, app).with_graceful_shutdown(async {
-        let _ = shutdown_receiver.await;
+        server_shutdown.notified().await;
     });
     tokio::pin!(server);
 
@@ -39,7 +40,7 @@ async fn run() -> Result<(), ApplicationError> {
       signal_result = shutdown_signal() => {
         signal_result.map_err(ApplicationError::Signal)?;
         info!(timeout_seconds = config.shutdown_timeout.as_secs(), "graceful shutdown started");
-        let _ = shutdown_sender.send(());
+        shutdown.notify_one();
         match time::timeout(config.shutdown_timeout, &mut server).await {
           Ok(result) => result.map_err(ApplicationError::Serve)?,
           Err(_) => return Err(ApplicationError::ShutdownDeadline {
