@@ -2,10 +2,14 @@ mod config;
 
 use std::{error::Error, fmt, io, net::SocketAddr, sync::Arc};
 
-use axum::Router;
+use axum::{BoxError, Router, error_handling::HandleErrorLayer, http::StatusCode};
 use config::{Config, ConfigError};
 use tokio::{net::TcpListener, signal, sync::Notify, time};
-use tower::{ServiceBuilder, limit::ConcurrencyLimitLayer};
+use tower::{
+    ServiceBuilder,
+    limit::ConcurrencyLimitLayer,
+    load_shed::{LoadShedLayer, error::Overloaded},
+};
 use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
@@ -61,9 +65,20 @@ fn apply_server_limits(router: Router, config: &Config) -> Router {
     router.layer(
         ServiceBuilder::new()
             .layer(TimeoutLayer::new(config.request_timeout))
+            .layer(HandleErrorLayer::new(handle_middleware_error))
+            .layer(LoadShedLayer::new())
             .layer(ConcurrencyLimitLayer::new(config.max_concurrent_requests))
             .layer(RequestBodyLimitLayer::new(config.max_request_body_bytes)),
     )
+}
+
+async fn handle_middleware_error(error: BoxError) -> StatusCode {
+    if error.is::<Overloaded>() {
+        StatusCode::SERVICE_UNAVAILABLE
+    } else {
+        error!(%error, "unexpected server middleware failure");
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
 }
 
 #[derive(Debug)]
@@ -143,7 +158,7 @@ mod tests {
     use super::*;
     use axum::{
         body::{Body, Bytes},
-        http::{Method, Request, StatusCode, header::CONTENT_LENGTH},
+        http::{Method, Request, header::CONTENT_LENGTH},
         routing::{get, post},
     };
     use tower::ServiceExt;
@@ -230,6 +245,54 @@ mod tests {
             .expect("router must produce a response");
 
         assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+    }
+
+    #[tokio::test]
+    async fn router_rejects_request_when_concurrency_is_exhausted() {
+        let config = Config {
+            max_concurrent_requests: 1,
+            ..Config::default()
+        };
+        let entered = Arc::new(Notify::new());
+        let release = Arc::new(Notify::new());
+        let handler_entered = Arc::clone(&entered);
+        let handler_release = Arc::clone(&release);
+        let router = Router::new().route(
+            "/held",
+            get(move || {
+                let entered = Arc::clone(&handler_entered);
+                let release = Arc::clone(&handler_release);
+                async move {
+                    entered.notify_one();
+                    release.notified().await;
+                    StatusCode::NO_CONTENT
+                }
+            }),
+        );
+        let app = apply_server_limits(router, &config);
+        let held_request = Request::builder()
+            .uri("/held")
+            .body(Body::empty())
+            .expect("test request must be valid");
+        let held_task = tokio::spawn(app.clone().oneshot(held_request));
+        entered.notified().await;
+
+        let excess_request = Request::builder()
+            .uri("/held")
+            .body(Body::empty())
+            .expect("test request must be valid");
+        let excess_response = app
+            .oneshot(excess_request)
+            .await
+            .expect("router must produce an overload response");
+        release.notify_one();
+        let held_response = held_task
+            .await
+            .expect("held request task must finish")
+            .expect("router must produce a held response");
+
+        assert_eq!(excess_response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(held_response.status(), StatusCode::NO_CONTENT);
     }
 
     #[test]

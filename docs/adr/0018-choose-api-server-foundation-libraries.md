@@ -19,7 +19,7 @@ ADR 0011 は非同期 runtime に Tokio、HTTP framework に axum を使用す�
 ## 決定
 
 - 非同期 runtime は `tokio`、HTTP server と routing は `axum` を使用します。
-- middleware の合成と同時実行数制限は `tower`、HTTP request body size と response 完了までの timeout は `tower-http` を使用します。手書き middleware は既存 library で要件を満たせない場合だけ追加します。
+- middleware の合成、同時実行数制限、超過 request の load shedding は `tower`、HTTP request body size と response 完了までの timeout は `tower-http` を使用します。手書き middleware は既存 library で要件を満たせない場合だけ追加します。
 - 構造化 event と span は `tracing`、標準出力への JSON 出力と環境変数による level filter は `tracing-subscriber` を使用します。application code は `tracing` の macro に依存し、出力形式の設定を entry point に限定します。
 - すべての library は workspace で version を統一し、default feature を無効にして使用する feature flag だけを有効化します。version の選択と更新は ADR 0017 の安定化期間および security 確認規則に従います。
 
@@ -67,7 +67,7 @@ ADR 0011 は非同期 runtime に Tokio、HTTP framework に axum を使用す�
 
 - 判断基準「適用範囲」: handler の実装に依存せず router 全体へ制限を適用できます。
 - 判断基準「整合性」: axum が採用する Tower service/layer と同じ合成方法を使用できます。
-- 判断基準「責務」: concurrency は汎用 `tower`、HTTP body と timeout は `tower-http` に分けます。
+- 判断基準「責務」: concurrency と待機列を作らない load shedding は汎用 `tower`、HTTP body と timeout は `tower-http` に分けます。
 
 ### D-3: 構造化 log
 
