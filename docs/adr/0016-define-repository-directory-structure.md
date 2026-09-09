@@ -17,6 +17,7 @@
 | crate | Rust の compilation unit となる package。 |
 | 生成物 | オントロジー定義などの入力から tool によって再生成できる file。 |
 | fixture | test の入力または期待結果として version 管理する固定データ。 |
+| Terraform root module | 一つの state として初期化、plan、apply する Terraform 構成の単位。 |
 
 ## 決定
 
@@ -38,7 +39,7 @@
 - `crates/` は責務ごとに一つの library crate を置きます。compiler は parser、validator、IR、diff、generator を内部 module として分離した `crates/ontology-compiler/` から開始し、独立した公開境界または依存関係が必要になった場合だけ crate を分割します。compiler CLI は `crates/ontology-cli/` に置きます。
 - `ontology/` の YAML を人が編集する原典とします。共通定義は `ontology/` 直下、環境固有の値が必要になった場合は `ontology/environments/<environment>/` に置き、原典と secret を混在させません。
 - `generated/` は generator ごとの `openapi/`、`migrations/`、`snapshots/`、`rust/` に分けます。各 file の先頭または同じ folder の README に生成 command と手修正可否を記載します。生成物から原典や手書き code を参照してよい一方、手書き code を `generated/` に置きません。
-- `infra/` は利用する managed platform の構成と環境差分を置きます。credential、secret、local state は commit しません。
+- `infra/` は Terraform を使う infrastructure as code の root とします。再利用する構成は `infra/modules/<name>/`、環境ごとに独立した state と変数を持つ root module は `infra/environments/<environment>/` に置きます。provider と backend の設定は各 root module に明示し、環境差分を conditional resource ではなく root module と入力変数で表現します。credential、secret、`.tfvars`、plan、local state は commit しません。
 - unit test は対象 module と同じ crate に置きます。crate 内だけで完結する integration test は `<crate>/tests/`、workspace をまたぐ end-to-end test と共有 fixture は root の `tests/` に置きます。
 - `docs/adr/` は意思決定、`docs/rules/` は作業時に守る規約、その他の `docs/` は現状の説明に使用します。規約は ADR の決定を上書きできません。
 - folder と crate の名前には小文字 ASCII の kebab-case を使います。Rust module と source file には snake_case を使います。
@@ -62,6 +63,9 @@
 │   ├── rust/
 │   └── snapshots/
 ├── infra/
+│   ├── environments/
+│   │   └── production/
+│   └── modules/
 ├── tests/
 └── docs/
     ├── adr/

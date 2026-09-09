@@ -16,3 +16,10 @@ coverage/
 dist/
 build/
 
+# Terraform local state and plans
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!.tfvars.example
