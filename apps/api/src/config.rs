@@ -240,6 +240,24 @@ mod tests {
     }
 
     #[test]
+    fn maximum_resource_limits_are_accepted() {
+        let values = HashMap::from([
+            ("REQUEST_TIMEOUT_SECONDS", "3600"),
+            ("MAX_CONCURRENT_REQUESTS", "10000"),
+            ("MAX_REQUEST_BODY_BYTES", "16777216"),
+            ("SHUTDOWN_TIMEOUT_SECONDS", "300"),
+        ]);
+
+        let config = Config::from_reader(|name| Ok(values.get(name).map(ToString::to_string)))
+            .expect("maximum values must remain in the valid range");
+
+        assert_eq!(config.request_timeout, Duration::from_secs(3_600));
+        assert_eq!(config.max_concurrent_requests, 10_000);
+        assert_eq!(config.max_request_body_bytes, 16_777_216);
+        assert_eq!(config.shutdown_timeout, Duration::from_secs(300));
+    }
+
+    #[test]
     fn zero_port_is_rejected_instead_of_selecting_an_ephemeral_port() {
         let result = Config::from_reader(|name| Ok((name == "PORT").then(|| "0".to_owned())));
 
