@@ -1,0 +1,15 @@
+[workspace]
+members = ["apps/api"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.95"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+axum = { version = "=0.8.6", default-features = false, features = ["http1", "tokio"] }
+tokio = { version = "=1.47.1", default-features = false, features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tower = { version = "=0.5.2", default-features = false, features = ["limit", "timeout"] }
+tracing = { version = "=0.1.41", default-features = false }
+tracing-subscriber = { version = "=0.3.20", default-features = false, features = ["ansi", "env-filter", "fmt", "json", "registry"] }

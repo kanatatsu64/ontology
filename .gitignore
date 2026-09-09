@@ -15,4 +15,4 @@ Thumbs.db
 coverage/
 dist/
 build/
-
+target/
