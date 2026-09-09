@@ -9,19 +9,23 @@ variable "region" {
   default     = "asia-northeast1"
 }
 
-variable "environment" {
-  description = "Environment suffix used in resource names and labels."
-  type        = string
-  default     = "production"
-}
-
 variable "api_image" {
-  description = "Immutable API OCI image reference, preferably pinned by digest."
+  description = "Immutable API OCI image reference pinned by a SHA-256 digest."
   type        = string
 
   validation {
-    condition     = strcontains(var.api_image, "@sha256:")
-    error_message = "api_image must be pinned to an immutable sha256 digest."
+    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$", var.api_image))
+    error_message = "api_image must be an OCI image reference ending in @sha256 followed by 64 hexadecimal characters."
+  }
+}
+
+variable "application_secret_version" {
+  description = "Numeric Secret Manager version exposed to the Cloud Run revisions."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[1-9][0-9]*$", var.application_secret_version))
+    error_message = "application_secret_version must be a positive numeric Secret Manager version."
   }
 }
 

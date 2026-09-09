@@ -23,6 +23,15 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "DATABASE_USER"
         value = google_sql_user.runtime.name
       }
+      env {
+        name = "APPLICATION_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.application.secret_id
+            version = var.application_secret_version
+          }
+        }
+      }
     }
 
     vpc_access {
@@ -34,7 +43,10 @@ resource "google_cloud_run_v2_service" "api" {
     }
   }
 
-  depends_on = [google_project_service.required]
+  depends_on = [
+    google_project_service.required,
+    google_secret_manager_secret_iam_member.runtime,
+  ]
 }
 
 resource "google_cloud_run_v2_job" "migration" {
@@ -64,6 +76,15 @@ resource "google_cloud_run_v2_job" "migration" {
           name  = "DATABASE_USER"
           value = google_sql_user.runtime.name
         }
+        env {
+          name = "APPLICATION_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.application.secret_id
+              version = var.application_secret_version
+            }
+          }
+        }
       }
 
       vpc_access {
@@ -76,5 +97,8 @@ resource "google_cloud_run_v2_job" "migration" {
     }
   }
 
-  depends_on = [google_project_service.required]
+  depends_on = [
+    google_project_service.required,
+    google_secret_manager_secret_iam_member.runtime,
+  ]
 }

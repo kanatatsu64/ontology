@@ -20,9 +20,10 @@ terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
 terraform plan \
   -var="project_id=${GCP_PROJECT_ID}" \
   -var="region=${GCP_REGION}" \
-  -var="api_image=${API_IMAGE}"
+  -var="api_image=${API_IMAGE}" \
+  -var="application_secret_version=${APPLICATION_SECRET_VERSION}"
 ```
 
-`api_image` は `@sha256:` を含む immutable digest で指定します。application secret の payload は Terraform state に残さないため、この module は secret container だけを作ります。必要な version は `gcloud secrets versions add` などの別経路で登録してください。
+`api_image` は `@sha256:` と 64 桁の 16 進数 digest を持つ immutable OCI image reference で指定します。application secret の payload は Terraform state に残さないため、この module は secret container と Cloud Run からの数値 version 参照だけを管理します。初回 apply の前に secret container と version を作成し、container を `google_secret_manager_secret.application` へ import してください。payload の更新は `gcloud secrets versions add` などの別経路で行い、新しい version 番号を `APPLICATION_SECRET_VERSION` に設定して plan/apply します。API と migration job には `APPLICATION_SECRET` として注入します。
 
 Production の Cloud Run service/job には deletion protection を有効にします。Cloud SQL は Terraform provider 側の削除保護に加え、Google Cloud 側の deletion protection も `database_deletion_protection` で同時に制御します。意図した削除では、保護を無効化する変更を先に review ・ apply してください。

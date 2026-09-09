@@ -1,8 +1,9 @@
 locals {
-  name = "ontology-${var.environment}"
+  environment = "production"
+  name        = "ontology-${local.environment}"
   labels = {
     application = "ontology"
-    environment = var.environment
+    environment = local.environment
     managed_by  = "terraform"
   }
   required_services = toset([
