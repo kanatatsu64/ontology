@@ -1,12 +1,12 @@
 mod config;
 
-use std::{error::Error, net::SocketAddr};
+use std::{error::Error, fmt, io, net::SocketAddr};
 
-use axum::{BoxError, Router, error_handling::HandleErrorLayer, http::StatusCode};
-use config::Config;
+use axum::Router;
+use config::{Config, ConfigError};
 use tokio::{net::TcpListener, signal, sync::oneshot, time};
-use tower::{ServiceBuilder, limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
-use tower_http::limit::RequestBodyLimitLayer;
+use tower::{ServiceBuilder, limit::ConcurrencyLimitLayer};
+use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
@@ -19,10 +19,12 @@ async fn main() {
     }
 }
 
-async fn run() -> Result<(), Box<dyn Error>> {
-    let config = Config::from_environment()?;
+async fn run() -> Result<(), ApplicationError> {
+    let config = Config::from_environment().map_err(ApplicationError::Configuration)?;
     let address = SocketAddr::new(config.bind_address, config.port);
-    let listener = TcpListener::bind(address).await?;
+    let listener = TcpListener::bind(address)
+        .await
+        .map_err(|source| ApplicationError::Bind { address, source })?;
     let app = empty_router(&config);
 
     info!(%address, "API server listening");
@@ -33,12 +35,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
     tokio::pin!(server);
 
     tokio::select! {
-      result = &mut server => result?,
+      result = &mut server => result.map_err(ApplicationError::Serve)?,
       () = shutdown_signal() => {
         info!(timeout_seconds = config.shutdown_timeout.as_secs(), "graceful shutdown started");
         let _ = shutdown_sender.send(());
         match time::timeout(config.shutdown_timeout, &mut server).await {
-          Ok(result) => result?,
+          Ok(result) => result.map_err(ApplicationError::Serve)?,
           Err(_) => error!("graceful shutdown deadline exceeded; terminating remaining connections"),
         }
       }
@@ -50,13 +52,41 @@ async fn run() -> Result<(), Box<dyn Error>> {
 fn empty_router(config: &Config) -> Router {
     Router::new().layer(
         ServiceBuilder::new()
-            .layer(HandleErrorLayer::new(|_: BoxError| async {
-                StatusCode::REQUEST_TIMEOUT
-            }))
             .layer(TimeoutLayer::new(config.request_timeout))
             .layer(ConcurrencyLimitLayer::new(config.max_concurrent_requests))
             .layer(RequestBodyLimitLayer::new(config.max_request_body_bytes)),
     )
+}
+
+#[derive(Debug)]
+enum ApplicationError {
+    Configuration(ConfigError),
+    Bind {
+        address: SocketAddr,
+        source: io::Error,
+    },
+    Serve(io::Error),
+}
+
+impl fmt::Display for ApplicationError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Configuration(error) => write!(formatter, "load server configuration: {error}"),
+            Self::Bind { address, source } => {
+                write!(formatter, "bind API listener to {address}: {source}")
+            }
+            Self::Serve(source) => write!(formatter, "serve API requests: {source}"),
+        }
+    }
+}
+
+impl Error for ApplicationError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Configuration(error) => Some(error),
+            Self::Bind { source, .. } | Self::Serve(source) => Some(source),
+        }
+    }
 }
 
 fn init_logging() {
@@ -103,7 +133,7 @@ mod tests {
     use super::*;
     use axum::{
         body::Body,
-        http::{Request, header::CONTENT_LENGTH},
+        http::{Request, StatusCode, header::CONTENT_LENGTH},
     };
     use tower::ServiceExt;
 
@@ -141,5 +171,19 @@ mod tests {
             .expect("router must produce a response");
 
         assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[test]
+    fn bind_error_identifies_operation_address_and_cause() {
+        let address = SocketAddr::from(([127, 0, 0, 1], 8080));
+        let error = ApplicationError::Bind {
+            address,
+            source: io::Error::new(io::ErrorKind::AddrInUse, "test address is in use"),
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "bind API listener to 127.0.0.1:8080: test address is in use"
+        );
     }
 }
