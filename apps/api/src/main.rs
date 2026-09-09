@@ -36,7 +36,8 @@ async fn run() -> Result<(), ApplicationError> {
 
     tokio::select! {
       result = &mut server => result.map_err(ApplicationError::Serve)?,
-      () = shutdown_signal() => {
+      signal_result = shutdown_signal() => {
+        signal_result.map_err(ApplicationError::Signal)?;
         info!(timeout_seconds = config.shutdown_timeout.as_secs(), "graceful shutdown started");
         let _ = shutdown_sender.send(());
         match time::timeout(config.shutdown_timeout, &mut server).await {
@@ -65,6 +66,7 @@ enum ApplicationError {
         address: SocketAddr,
         source: io::Error,
     },
+    Signal(io::Error),
     Serve(io::Error),
 }
 
@@ -75,6 +77,7 @@ impl fmt::Display for ApplicationError {
             Self::Bind { address, source } => {
                 write!(formatter, "bind API listener to {address}: {source}")
             }
+            Self::Signal(source) => write!(formatter, "listen for process shutdown: {source}"),
             Self::Serve(source) => write!(formatter, "serve API requests: {source}"),
         }
     }
@@ -84,7 +87,7 @@ impl Error for ApplicationError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Configuration(error) => Some(error),
-            Self::Bind { source, .. } | Self::Serve(source) => Some(source),
+            Self::Bind { source, .. } | Self::Signal(source) | Self::Serve(source) => Some(source),
         }
     }
 }
@@ -98,33 +101,24 @@ fn init_logging() {
         .init();
 }
 
-async fn shutdown_signal() {
-    let interrupt = async {
-        if let Err(error) = signal::ctrl_c().await {
-            error!(%error, "failed to install interrupt signal handler");
-            std::future::pending::<()>().await;
-        }
-    };
+async fn shutdown_signal() -> io::Result<()> {
+    let interrupt = signal::ctrl_c();
 
     #[cfg(unix)]
     let terminate = async {
-        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
-            Ok(mut stream) => {
-                stream.recv().await;
-            }
-            Err(error) => {
-                error!(%error, "failed to install termination signal handler");
-                std::future::pending::<()>().await;
-            }
+        let mut stream = signal::unix::signal(signal::unix::SignalKind::terminate())?;
+        if stream.recv().await.is_none() {
+            return Err(io::Error::other("termination signal stream closed"));
         }
+        Ok(())
     };
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
+    let terminate = std::future::pending::<io::Result<()>>();
 
     tokio::select! {
-      () = interrupt => {},
-      () = terminate => {},
+      result = interrupt => result,
+      result = terminate => result,
     }
 }
 
