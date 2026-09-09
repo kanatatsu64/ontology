@@ -38,10 +38,16 @@ impl Default for Config {
 
 impl Config {
     pub(crate) fn from_environment() -> Result<Self, ConfigError> {
-        Self::from_reader(|name| env::var(name).ok())
+        Self::from_reader(|name| match env::var(name) {
+            Ok(value) => Ok(Some(value)),
+            Err(env::VarError::NotPresent) => Ok(None),
+            Err(env::VarError::NotUnicode(_)) => Err(ConfigError::Invalid { name }),
+        })
     }
 
-    fn from_reader(read: impl Fn(&str) -> Option<String>) -> Result<Self, ConfigError> {
+    fn from_reader(
+        read: impl Fn(&'static str) -> Result<Option<String>, ConfigError>,
+    ) -> Result<Self, ConfigError> {
         let bind_address = parse_or_default(&read, "BIND_ADDRESS", DEFAULT_BIND_ADDRESS)?;
         let port = positive("PORT", parse_or_default(&read, "PORT", DEFAULT_PORT)?)?;
         let request_timeout_seconds = positive(
@@ -89,14 +95,14 @@ impl Config {
 }
 
 fn parse_or_default<T>(
-    read: &impl Fn(&str) -> Option<String>,
+    read: &impl Fn(&'static str) -> Result<Option<String>, ConfigError>,
     name: &'static str,
     default: T,
 ) -> Result<T, ConfigError>
 where
     T: std::str::FromStr,
 {
-    match read(name) {
+    match read(name)? {
         Some(value) => value.parse().map_err(|_| ConfigError::Invalid { name }),
         None => Ok(default),
     }
@@ -143,7 +149,8 @@ mod tests {
 
     #[test]
     fn defaults_are_safe_and_cloud_run_compatible() {
-        let config = Config::from_reader(|_| None).expect("defaults must form valid configuration");
+        let config =
+            Config::from_reader(|_| Ok(None)).expect("defaults must form valid configuration");
 
         assert_eq!(config.bind_address.to_string(), "0.0.0.0");
         assert_eq!(config.port, 8080);
@@ -164,7 +171,7 @@ mod tests {
             ("SHUTDOWN_TIMEOUT_SECONDS", "8"),
         ]);
 
-        let config = Config::from_reader(|name| values.get(name).map(ToString::to_string))
+        let config = Config::from_reader(|name| Ok(values.get(name).map(ToString::to_string)))
             .expect("test values must form valid configuration");
 
         assert_eq!(config.bind_address.to_string(), "127.0.0.1");
@@ -177,8 +184,9 @@ mod tests {
 
     #[test]
     fn zero_resource_limit_is_rejected() {
-        let result =
-            Config::from_reader(|name| (name == "MAX_CONCURRENT_REQUESTS").then(|| "0".to_owned()));
+        let result = Config::from_reader(|name| {
+            Ok((name == "MAX_CONCURRENT_REQUESTS").then(|| "0".to_owned()))
+        });
 
         assert_eq!(
             result,
@@ -190,7 +198,7 @@ mod tests {
 
     #[test]
     fn zero_port_is_rejected_instead_of_selecting_an_ephemeral_port() {
-        let result = Config::from_reader(|name| (name == "PORT").then(|| "0".to_owned()));
+        let result = Config::from_reader(|name| Ok((name == "PORT").then(|| "0".to_owned())));
 
         assert_eq!(result, Err(ConfigError::Zero { name: "PORT" }));
     }
@@ -198,7 +206,7 @@ mod tests {
     #[test]
     fn invalid_value_names_variable_without_echoing_value() {
         let result =
-            Config::from_reader(|name| (name == "PORT").then(|| "secret-value".to_owned()));
+            Config::from_reader(|name| Ok((name == "PORT").then(|| "secret-value".to_owned())));
 
         assert_eq!(result, Err(ConfigError::Invalid { name: "PORT" }));
         assert!(
@@ -206,6 +214,24 @@ mod tests {
                 .expect_err("value is invalid")
                 .to_string()
                 .contains("secret-value")
+        );
+    }
+
+    #[test]
+    fn non_unicode_environment_value_is_rejected_as_invalid() {
+        let result = Config::from_reader(|name| {
+            if name == "BIND_ADDRESS" {
+                Err(ConfigError::Invalid { name })
+            } else {
+                Ok(None)
+            }
+        });
+
+        assert_eq!(
+            result,
+            Err(ConfigError::Invalid {
+                name: "BIND_ADDRESS"
+            })
         );
     }
 }

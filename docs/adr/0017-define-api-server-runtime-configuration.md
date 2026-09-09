@@ -24,7 +24,7 @@ route を追加する前に、Cloud Run で安全に起動・停止できる API
 - process は `SIGTERM` または割り込みを受けると新規受付を止めます。graceful shutdown の期限後は残った connection を終了します。
 - log は標準出力へ JSON で出力し、level filter は `RUST_LOG`、未設定または不正な場合は `info` とします。設定 error に設定値を含めません。
 - Rust dependency は default feature を無効にして必要な feature だけを有効化し、workspace で直接 dependency の完全 version を固定します。採用候補は release から 14 日以上経過した非 yanked version のうち最新のものとし、追加・更新時に RustSec advisory と license を確認します。dependency を解決できる環境で `Cargo.lock` を生成して commit し、CI で `cargo audit` を実行します。
-- 2026-09-09 時点の採用 version は `axum 0.8.6`、`tokio 1.47.1`、`tower 0.5.2`、`tracing 0.1.41`、`tracing-subscriber 0.3.20` とします。採用の基準日は 2026-08-26 とし、それより後の release は使用しません。
+- 2026-09-09 時点の採用 version は `axum 0.8.6`、`tokio 1.47.1`、`tower 0.5.2`、`tower-http 0.6.6`、`tracing 0.1.41`、`tracing-subscriber 0.3.20` とします。採用の基準日は 2026-08-26 とし、それより後の release は使用しません。
 
 ## 検討
 

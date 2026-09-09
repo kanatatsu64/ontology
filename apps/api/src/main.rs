@@ -2,12 +2,11 @@ mod config;
 
 use std::{error::Error, net::SocketAddr};
 
-use axum::{
-    BoxError, Router, error_handling::HandleErrorLayer, extract::DefaultBodyLimit, http::StatusCode,
-};
+use axum::{BoxError, Router, error_handling::HandleErrorLayer, http::StatusCode};
 use config::Config;
 use tokio::{net::TcpListener, signal, sync::oneshot, time};
 use tower::{ServiceBuilder, limit::ConcurrencyLimitLayer, timeout::TimeoutLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
@@ -56,7 +55,7 @@ fn empty_router(config: &Config) -> Router {
             }))
             .layer(TimeoutLayer::new(config.request_timeout))
             .layer(ConcurrencyLimitLayer::new(config.max_concurrent_requests))
-            .layer(DefaultBodyLimit::max(config.max_request_body_bytes)),
+            .layer(RequestBodyLimitLayer::new(config.max_request_body_bytes)),
     )
 }
 
@@ -102,7 +101,10 @@ async fn shutdown_signal() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request};
+    use axum::{
+        body::Body,
+        http::{Request, header::CONTENT_LENGTH},
+    };
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -119,5 +121,25 @@ mod tests {
             .expect("router must produce a response");
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn router_rejects_oversized_body_before_routing() {
+        let config = Config {
+            max_request_body_bytes: 4,
+            ..Config::default()
+        };
+        let request = Request::builder()
+            .uri("/not-implemented")
+            .header(CONTENT_LENGTH, "5")
+            .body(Body::from("12345"))
+            .expect("test request must be valid");
+
+        let response = empty_router(&config)
+            .oneshot(request)
+            .await
+            .expect("router must produce a response");
+
+        assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

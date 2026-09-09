@@ -25,7 +25,7 @@
 
 ## API サーバーの起動
 
-現在の API サーバーは route を持たない枠組みだけの実装で、すべての request に `404 Not Found` を返します。
+現在の API サーバーは route を持たない枠組みだけの実装です。上限を超える request body は `413 Payload Too Large`、それ以外は `404 Not Found` を返します。
 
 ```text
 cargo run --package ontology-api
