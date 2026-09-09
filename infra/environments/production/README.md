@@ -2,7 +2,7 @@
 
 ADR 0012 の Cloud Run、Cloud Run Job、Artifact Registry、private IP の Cloud SQL for PostgreSQL、Secret Manager を構築する Terraform root module です。
 
-state bucket と GitHub Workload Identity Federation は、この root module を実行する前に bootstrap してください。必要な GCP/GitHub 設定と初回 import は pull request の説明に記載し、`.github/PULL_REQUEST_TEMPLATE/terraform.md` の checklist で確認します。
+state bucket と GitHub Workload Identity Federation は、この root module を実行する前に [production Terraform bootstrap 手順](../../../docs/operations/terraform-production-bootstrap.md) で構築してください。pull request では `.github/PULL_REQUEST_TEMPLATE/terraform.md` の checklist を確認します。
 
 構成は責務ごとに分割しています。
 
