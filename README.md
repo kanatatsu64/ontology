@@ -22,3 +22,13 @@
 | [ユビキタス言語](docs/ubiquitous/platform.md) | オントロジープラットフォームを利用する際の共通語彙 |
 | [ADR](docs/adr/README.md) | アーキテクチャ上の意思決定と運用方法 |
 | [コーディング規約](docs/rules/README.md) | 実装、テスト、ドキュメントで守る規約 |
+
+## API サーバーの起動
+
+現在の API サーバーは route を持たない枠組みだけの実装です。上限を超える request body は `413 Payload Too Large`、それ以外は `404 Not Found` を返します。
+
+```text
+cargo run --package ontology-api
+```
+
+設定は環境変数から読み込みます。利用できる変数と既定値は [`.env.example`](.env.example)、設定を選んだ理由と運用規則は [ADR 0017](docs/adr/0017-define-api-server-runtime-configuration.md)を参照してください。
