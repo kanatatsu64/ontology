@@ -17,9 +17,12 @@ use tracing_subscriber::EnvFilter;
 #[tokio::main]
 async fn main() {
     init_logging();
-    if let Err(error) = run().await {
-        error!(%error, "API server stopped");
-        std::process::exit(1);
+    match run().await {
+        Ok(()) => info!("API server stopped"),
+        Err(error) => {
+            error!(%error, "API server stopped with an error");
+            std::process::exit(1);
+        }
     }
 }
 
@@ -247,7 +250,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn router_rejects_request_when_concurrency_is_exhausted() {
         let config = Config {
             max_concurrent_requests: 1,
