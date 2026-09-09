@@ -42,7 +42,9 @@ async fn run() -> Result<(), ApplicationError> {
         let _ = shutdown_sender.send(());
         match time::timeout(config.shutdown_timeout, &mut server).await {
           Ok(result) => result.map_err(ApplicationError::Serve)?,
-          Err(_) => error!("graceful shutdown deadline exceeded; terminating remaining connections"),
+          Err(_) => return Err(ApplicationError::ShutdownDeadline {
+            timeout: config.shutdown_timeout,
+          }),
         }
       }
     }
@@ -67,6 +69,9 @@ enum ApplicationError {
         source: io::Error,
     },
     Signal(io::Error),
+    ShutdownDeadline {
+        timeout: time::Duration,
+    },
     Serve(io::Error),
 }
 
@@ -78,6 +83,11 @@ impl fmt::Display for ApplicationError {
                 write!(formatter, "bind API listener to {address}: {source}")
             }
             Self::Signal(source) => write!(formatter, "listen for process shutdown: {source}"),
+            Self::ShutdownDeadline { timeout } => write!(
+                formatter,
+                "finish API requests within shutdown deadline of {} seconds",
+                timeout.as_secs()
+            ),
             Self::Serve(source) => write!(formatter, "serve API requests: {source}"),
         }
     }
@@ -88,6 +98,7 @@ impl Error for ApplicationError {
         match self {
             Self::Configuration(error) => Some(error),
             Self::Bind { source, .. } | Self::Signal(source) | Self::Serve(source) => Some(source),
+            Self::ShutdownDeadline { .. } => None,
         }
     }
 }
@@ -178,6 +189,18 @@ mod tests {
         assert_eq!(
             error.to_string(),
             "bind API listener to 127.0.0.1:8080: test address is in use"
+        );
+    }
+
+    #[test]
+    fn shutdown_deadline_error_identifies_configured_timeout() {
+        let error = ApplicationError::ShutdownDeadline {
+            timeout: time::Duration::from_secs(30),
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "finish API requests within shutdown deadline of 30 seconds"
         );
     }
 }

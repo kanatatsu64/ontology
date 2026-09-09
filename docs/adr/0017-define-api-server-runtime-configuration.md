@@ -20,7 +20,7 @@ route を追加する前に、Cloud Run で安全に起動・停止できる API
 ## 決定
 
 - API サーバーは `BIND_ADDRESS` と `PORT` で待受先を設定し、既定値を Cloud Run と互換性のある `0.0.0.0:8080` とします。
-- request timeout は `REQUEST_TIMEOUT_SECONDS=30`、concurrency は `MAX_CONCURRENT_REQUESTS=256`、body size は `MAX_REQUEST_BODY_BYTES=1048576`、graceful shutdown の期限は `SHUTDOWN_TIMEOUT_SECONDS=30` を既定値とします。すべて環境変数で上書きでき、数値の `0` と構文上不正な値では起動を失敗させます。
+- request timeout は `REQUEST_TIMEOUT_SECONDS=30`（範囲 1–3,600）、concurrency は `MAX_CONCURRENT_REQUESTS=256`（範囲 1–10,000）、body size は `MAX_REQUEST_BODY_BYTES=1048576`（範囲 1–16,777,216）、graceful shutdown の期限は `SHUTDOWN_TIMEOUT_SECONDS=30`（範囲 1–300）を既定値とします。単位は timeout が秒、body size が byte です。すべて環境変数で上書きでき、範囲外または構文上不正な値では起動を失敗させます。
 - process は `SIGTERM` または割り込みを受けると新規受付を止めます。graceful shutdown の期限後は残った connection を終了します。
 - log は標準出力へ JSON で出力し、level filter は `RUST_LOG`、未設定または不正な場合は `info` とします。設定 error に設定値を含めません。
 - Rust dependency は default feature を無効にして必要な feature だけを有効化し、workspace で直接 dependency の完全 version を固定します。採用候補は release から 14 日以上経過した非 yanked version のうち最新のものとし、追加・更新時に RustSec advisory と license を確認します。dependency を解決できる環境で `Cargo.lock` を生成して commit し、CI で `cargo audit` を実行します。
@@ -34,6 +34,7 @@ route を追加する前に、Cloud Run で安全に起動・停止できる API
 
 - 同じ image を local と Cloud Run で使用できること
 - 設定漏れでも resource が無制限にならないこと
+- 過大な設定値で framework の許容範囲超過や極端な resource 予約を起こさないこと
 - 不正な明示値を見逃さないこと
 
 #### 選択肢
@@ -47,7 +48,7 @@ route を追加する前に、Cloud Run で安全に起動・停止できる API
 **環境変数と保守的な既定値**を採用します。
 
 - 判断基準「image の共通化」: Cloud Run が供給する `PORT` を直接利用でき、local でも追加 file なしで起動できます。
-- 判断基準「resource 上限」: 未設定時にも有限の timeout、concurrency、body size、終了期限を適用します。
+- 判断基準「resource 上限」: 未設定時にも有限の timeout、concurrency、body size、終了期限を適用し、過大値は middleware を構築する前に拒否します。
 - 判断基準「誤設定の検出」: 明示された不正値は既定値へ戻さず起動 error にします。
 
 ### D-2: dependency の version 選択

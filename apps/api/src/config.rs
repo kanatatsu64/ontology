@@ -12,6 +12,10 @@ const DEFAULT_REQUEST_TIMEOUT_SECONDS: u64 = 30;
 const DEFAULT_MAX_CONCURRENT_REQUESTS: usize = 256;
 const DEFAULT_MAX_REQUEST_BODY_BYTES: usize = 1_048_576;
 const DEFAULT_SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
+const MAX_REQUEST_TIMEOUT_SECONDS: u64 = 3_600;
+const MAX_CONCURRENT_REQUESTS_LIMIT: usize = 10_000;
+const MAX_REQUEST_BODY_BYTES_LIMIT: usize = 16 * 1_048_576;
+const MAX_SHUTDOWN_TIMEOUT_SECONDS: u64 = 300;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Config {
@@ -50,37 +54,41 @@ impl Config {
     ) -> Result<Self, ConfigError> {
         let bind_address = parse_or_default(&read, "BIND_ADDRESS", DEFAULT_BIND_ADDRESS)?;
         let port = positive("PORT", parse_or_default(&read, "PORT", DEFAULT_PORT)?)?;
-        let request_timeout_seconds = positive(
+        let request_timeout_seconds = bounded(
             "REQUEST_TIMEOUT_SECONDS",
             parse_or_default(
                 &read,
                 "REQUEST_TIMEOUT_SECONDS",
                 DEFAULT_REQUEST_TIMEOUT_SECONDS,
             )?,
+            MAX_REQUEST_TIMEOUT_SECONDS,
         )?;
-        let max_concurrent_requests = positive(
+        let max_concurrent_requests = bounded(
             "MAX_CONCURRENT_REQUESTS",
             parse_or_default(
                 &read,
                 "MAX_CONCURRENT_REQUESTS",
                 DEFAULT_MAX_CONCURRENT_REQUESTS,
             )?,
+            MAX_CONCURRENT_REQUESTS_LIMIT,
         )?;
-        let max_request_body_bytes = positive(
+        let max_request_body_bytes = bounded(
             "MAX_REQUEST_BODY_BYTES",
             parse_or_default(
                 &read,
                 "MAX_REQUEST_BODY_BYTES",
                 DEFAULT_MAX_REQUEST_BODY_BYTES,
             )?,
+            MAX_REQUEST_BODY_BYTES_LIMIT,
         )?;
-        let shutdown_timeout_seconds = positive(
+        let shutdown_timeout_seconds = bounded(
             "SHUTDOWN_TIMEOUT_SECONDS",
             parse_or_default(
                 &read,
                 "SHUTDOWN_TIMEOUT_SECONDS",
                 DEFAULT_SHUTDOWN_TIMEOUT_SECONDS,
             )?,
+            MAX_SHUTDOWN_TIMEOUT_SECONDS,
         )?;
 
         Ok(Self {
@@ -119,9 +127,25 @@ where
     }
 }
 
+fn bounded<T>(name: &'static str, value: T, maximum: T) -> Result<T, ConfigError>
+where
+    T: Copy + Default + fmt::Display + PartialEq + PartialOrd,
+{
+    let value = positive(name, value)?;
+    if value > maximum {
+        Err(ConfigError::TooLarge {
+            name,
+            maximum: maximum.to_string(),
+        })
+    } else {
+        Ok(value)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub(crate) enum ConfigError {
     Invalid { name: &'static str },
+    TooLarge { name: &'static str, maximum: String },
     Zero { name: &'static str },
 }
 
@@ -131,6 +155,10 @@ impl fmt::Display for ConfigError {
             Self::Invalid { name } => write!(
                 formatter,
                 "environment variable {name} has an invalid value"
+            ),
+            Self::TooLarge { name, maximum } => write!(
+                formatter,
+                "environment variable {name} must not exceed {maximum}"
             ),
             Self::Zero { name } => write!(
                 formatter,
@@ -192,6 +220,21 @@ mod tests {
             result,
             Err(ConfigError::Zero {
                 name: "MAX_CONCURRENT_REQUESTS"
+            })
+        );
+    }
+
+    #[test]
+    fn excessive_concurrency_is_rejected_before_middleware_construction() {
+        let result = Config::from_reader(|name| {
+            Ok((name == "MAX_CONCURRENT_REQUESTS").then(|| "10001".to_owned()))
+        });
+
+        assert_eq!(
+            result,
+            Err(ConfigError::TooLarge {
+                name: "MAX_CONCURRENT_REQUESTS",
+                maximum: "10000".to_owned(),
             })
         );
     }
