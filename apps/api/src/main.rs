@@ -54,7 +54,11 @@ async fn run() -> Result<(), ApplicationError> {
 }
 
 fn empty_router(config: &Config) -> Router {
-    Router::new().layer(
+    apply_server_limits(Router::new(), config)
+}
+
+fn apply_server_limits(router: Router, config: &Config) -> Router {
+    router.layer(
         ServiceBuilder::new()
             .layer(TimeoutLayer::new(config.request_timeout))
             .layer(ConcurrencyLimitLayer::new(config.max_concurrent_requests))
@@ -138,8 +142,9 @@ async fn shutdown_signal() -> io::Result<()> {
 mod tests {
     use super::*;
     use axum::{
-        body::Body,
-        http::{Request, StatusCode, header::CONTENT_LENGTH},
+        body::{Body, Bytes},
+        http::{Method, Request, StatusCode, header::CONTENT_LENGTH},
+        routing::{get, post},
     };
     use tower::ServiceExt;
 
@@ -177,6 +182,54 @@ mod tests {
             .expect("router must produce a response");
 
         assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[tokio::test]
+    async fn router_stops_oversized_body_without_content_length() {
+        let config = Config {
+            max_request_body_bytes: 4,
+            ..Config::default()
+        };
+        let router = Router::new().route(
+            "/body",
+            post(|_body: Bytes| async { StatusCode::NO_CONTENT }),
+        );
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/body")
+            .body(Body::from("12345"))
+            .expect("test request must be valid");
+
+        let response = apply_server_limits(router, &config)
+            .oneshot(request)
+            .await
+            .expect("router must produce a response");
+
+        assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn router_times_out_handler_that_never_responds() {
+        async fn never_responds() -> StatusCode {
+            std::future::pending().await
+        }
+
+        let config = Config {
+            request_timeout: time::Duration::from_secs(1),
+            ..Config::default()
+        };
+        let router = Router::new().route("/slow", get(never_responds));
+        let request = Request::builder()
+            .uri("/slow")
+            .body(Body::empty())
+            .expect("test request must be valid");
+
+        let response = apply_server_limits(router, &config)
+            .oneshot(request)
+            .await
+            .expect("router must produce a response");
+
+        assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
     }
 
     #[test]
