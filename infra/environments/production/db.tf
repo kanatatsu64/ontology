@@ -5,11 +5,12 @@ resource "google_sql_database_instance" "application" {
   deletion_protection = var.database_deletion_protection
 
   settings {
-    tier              = var.database_tier
-    availability_type = "REGIONAL"
-    disk_type         = "PD_SSD"
-    disk_autoresize   = true
-    user_labels       = local.labels
+    tier                        = var.database_tier
+    availability_type           = "REGIONAL"
+    deletion_protection_enabled = var.database_deletion_protection
+    disk_type                   = "PD_SSD"
+    disk_autoresize              = true
+    user_labels                  = local.labels
 
     backup_configuration {
       enabled                        = true

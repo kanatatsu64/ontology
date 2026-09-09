@@ -1,7 +1,7 @@
 resource "google_cloud_run_v2_service" "api" {
   name                = "${local.name}-api"
   location            = var.region
-  deletion_protection = false
+  deletion_protection = true
   ingress             = "INGRESS_TRAFFIC_ALL"
   labels              = local.labels
 
@@ -40,7 +40,7 @@ resource "google_cloud_run_v2_service" "api" {
 resource "google_cloud_run_v2_job" "migration" {
   name                = "${local.name}-migration"
   location            = var.region
-  deletion_protection = false
+  deletion_protection = true
   labels              = local.labels
 
   template {

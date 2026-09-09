@@ -24,3 +24,5 @@ terraform plan \
 ```
 
 `api_image` は `@sha256:` を含む immutable digest で指定します。application secret の payload は Terraform state に残さないため、この module は secret container だけを作ります。必要な version は `gcloud secrets versions add` などの別経路で登録してください。
+
+Production の Cloud Run service/job には deletion protection を有効にします。Cloud SQL は Terraform provider 側の削除保護に加え、Google Cloud 側の deletion protection も `database_deletion_protection` で同時に制御します。意図した削除では、保護を無効化する変更を先に review ・ apply してください。

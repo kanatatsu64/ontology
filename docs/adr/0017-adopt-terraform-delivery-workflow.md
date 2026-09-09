@@ -26,6 +26,7 @@ ADR 0012 で決定した Google Cloud の実行基盤を、再現可能かつ re
 - `main` への merge で最新 commit から改めて plan を作成し、その保存済み plan だけを自動 apply します。GitHub Environment の保護規則を apply の承認境界にできます。
 - GitHub Actions は Workload Identity Federation で短期 credential を取得し、長期 service account key を repository に保存しません。PR の plan は resource と state の読み取りだけを許可する plan 専用 service account、main の apply は resource を変更できる apply 専用 service account に分離します。
 - provider と Terraform の version constraint を commit します。secret payload、credential、変数ファイル、local state、plan は commit しません。
+- production の Cloud Run service/job と Cloud SQL に deletion protection を設定し、削除時は保護を無効化する先行変更の review を必要とします。
 
 ## 検討
 
