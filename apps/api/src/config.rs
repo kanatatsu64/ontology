@@ -1,4 +1,10 @@
-use std::{env, error::Error, fmt, net::IpAddr, time::Duration};
+use std::{
+    env,
+    error::Error,
+    fmt,
+    net::{IpAddr, Ipv4Addr},
+    time::Duration,
+};
 
 const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
 const DEFAULT_PORT: u16 = 8080;
@@ -17,6 +23,19 @@ pub(crate) struct Config {
     pub(crate) shutdown_timeout: Duration,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            bind_address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            port: DEFAULT_PORT,
+            request_timeout: Duration::from_secs(DEFAULT_REQUEST_TIMEOUT_SECONDS),
+            max_concurrent_requests: DEFAULT_MAX_CONCURRENT_REQUESTS,
+            max_request_body_bytes: DEFAULT_MAX_REQUEST_BODY_BYTES,
+            shutdown_timeout: Duration::from_secs(DEFAULT_SHUTDOWN_TIMEOUT_SECONDS),
+        }
+    }
+}
+
 impl Config {
     pub(crate) fn from_environment() -> Result<Self, ConfigError> {
         Self::from_reader(|name| env::var(name).ok())
@@ -24,7 +43,7 @@ impl Config {
 
     fn from_reader(read: impl Fn(&str) -> Option<String>) -> Result<Self, ConfigError> {
         let bind_address = parse_or_default(&read, "BIND_ADDRESS", DEFAULT_BIND_ADDRESS)?;
-        let port = parse_or_default(&read, "PORT", DEFAULT_PORT)?;
+        let port = positive("PORT", parse_or_default(&read, "PORT", DEFAULT_PORT)?)?;
         let request_timeout_seconds = positive(
             "REQUEST_TIMEOUT_SECONDS",
             parse_or_default(
@@ -167,6 +186,13 @@ mod tests {
                 name: "MAX_CONCURRENT_REQUESTS"
             })
         );
+    }
+
+    #[test]
+    fn zero_port_is_rejected_instead_of_selecting_an_ephemeral_port() {
+        let result = Config::from_reader(|name| (name == "PORT").then(|| "0".to_owned()));
+
+        assert_eq!(result, Err(ConfigError::Zero { name: "PORT" }));
     }
 
     #[test]

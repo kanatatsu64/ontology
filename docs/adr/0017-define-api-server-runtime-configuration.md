@@ -23,7 +23,7 @@ route を追加する前に、Cloud Run で安全に起動・停止できる API
 - request timeout は `REQUEST_TIMEOUT_SECONDS=30`、concurrency は `MAX_CONCURRENT_REQUESTS=256`、body size は `MAX_REQUEST_BODY_BYTES=1048576`、graceful shutdown の期限は `SHUTDOWN_TIMEOUT_SECONDS=30` を既定値とします。すべて環境変数で上書きでき、数値の `0` と構文上不正な値では起動を失敗させます。
 - process は `SIGTERM` または割り込みを受けると新規受付を止めます。graceful shutdown の期限後は残った connection を終了します。
 - log は標準出力へ JSON で出力し、level filter は `RUST_LOG`、未設定または不正な場合は `info` とします。設定 error に設定値を含めません。
-- Rust dependency は default feature を無効にして必要な feature だけを有効化し、workspace で完全 version を固定します。採用候補は release から 14 日以上経過した非 yanked version のうち最新のものとし、追加・更新時に RustSec advisory と license を確認します。`Cargo.lock` を commit し、CI で `cargo audit` を実行します。
+- Rust dependency は default feature を無効にして必要な feature だけを有効化し、workspace で直接 dependency の完全 version を固定します。採用候補は release から 14 日以上経過した非 yanked version のうち最新のものとし、追加・更新時に RustSec advisory と license を確認します。dependency を解決できる環境で `Cargo.lock` を生成して commit し、CI で `cargo audit` を実行します。
 - 2026-09-09 時点の採用 version は `axum 0.8.6`、`tokio 1.47.1`、`tower 0.5.2`、`tracing 0.1.41`、`tracing-subscriber 0.3.20` とします。採用の基準日は 2026-08-26 とし、それより後の release は使用しません。
 
 ## 検討
@@ -70,7 +70,7 @@ route を追加する前に、Cloud Run で安全に起動・停止できる API
 
 - 判断基準「鮮度」: 基準日以前で最新の候補を定期的に確認し、古い version の放置を避けます。
 - 判断基準「安定性」: 公開後 14 日は採用せず、緊急の security 修正だけ review で例外を記録します。
-- 判断基準「再現性」: manifest と lock file の両方で解決結果を固定します。
+- 判断基準「再現性」: manifest で直接 dependency を固定し、dependency 解決時に生成する lock file で推移 dependency も固定します。
 
 ## 影響
 

@@ -98,3 +98,26 @@ async fn shutdown_signal() {
       () = terminate => {},
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn router_without_routes_returns_not_found() {
+        let config = Config::default();
+        let request = Request::builder()
+            .uri("/not-implemented")
+            .body(Body::empty())
+            .expect("test request must be valid");
+
+        let response = empty_router(&config)
+            .oneshot(request)
+            .await
+            .expect("router must produce a response");
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+}
